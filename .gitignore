@@ -1,0 +1,22 @@
+# dependencies and build output
+node_modules/
+dist/
+
+# PRIVATE: real spreadsheets and any data files never go to the repository
+local-data/
+*.ods
+*.xlsx
+*.xls
+*.csv
+*.pdf
+*.json.enc
+private-*
+
+# macOS / exFAT metadata
+.DS_Store
+._*
+
+# editors
+.vscode/
+.idea/
+*.log
