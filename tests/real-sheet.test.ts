@@ -6,7 +6,7 @@ import { parseBudget } from '../src/lib/template';
 import { totals, byCategory } from '../src/lib/metrics';
 
 const FILE = 'local-data/ModeloRafael.ods';
-const run = existsSync(FILE) ? describe : describe.skip;
+const run = existsSync(FILE) ? describe : (_: string, __: () => void) => describe.skip('real spreadsheet (not present: skipped)', () => test('skipped', () => {}));
 const c = (x: number) => Math.round(x * 100);
 
 run('real spreadsheet (local only)', () => {
