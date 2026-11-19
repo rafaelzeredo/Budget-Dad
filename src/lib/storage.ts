@@ -1,9 +1,6 @@
 // Per-device conveniences only. Everything stays in this browser.
-import type { BudgetModel } from './types';
-
-const KEY = 'budget-dad:v1:model';
 const THEME = 'budget-dad:theme';
-const REMEMBER = 'budget-dad:remember';
+const KEY = 'budget-dad:access';
 
 function safe<T>(fn: () => T, fallback: T): T {
   try {
@@ -13,15 +10,11 @@ function safe<T>(fn: () => T, fallback: T): T {
   }
 }
 
-export const loadModel = (): BudgetModel | null => safe(() => {
-  const s = localStorage.getItem(KEY);
-  return s ? (JSON.parse(s) as BudgetModel) : null;
-}, null);
-export const saveModel = (m: BudgetModel) => safe(() => localStorage.setItem(KEY, JSON.stringify(m)), undefined);
-export const clearModel = () => safe(() => localStorage.removeItem(KEY), undefined);
-
 export type Theme = 'auto' | 'light' | 'dark';
 export const loadTheme = (): Theme => safe(() => (localStorage.getItem(THEME) as Theme) || 'auto', 'auto');
 export const saveTheme = (t: Theme) => safe(() => localStorage.setItem(THEME, t), undefined);
-export const loadRemember = (): boolean => safe(() => localStorage.getItem(REMEMBER) !== '0', true);
-export const saveRemember = (v: boolean) => safe(() => localStorage.setItem(REMEMBER, v ? '1' : '0'), undefined);
+
+/** The access key of the private link, remembered on this device after the first visit. */
+export const loadAccess = (): string | null => safe(() => localStorage.getItem(KEY), null);
+export const saveAccess = (k: string): boolean => safe(() => (localStorage.setItem(KEY, k), localStorage.getItem(KEY) === k), false);
+export const clearAccess = () => safe(() => localStorage.removeItem(KEY), undefined);

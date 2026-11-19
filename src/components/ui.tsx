@@ -12,12 +12,6 @@ export function BrandMark({ className = 'brand-mark' }: { className?: string }) 
 }
 
 export const Icon = {
-  upload: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M12 16V4M7 9l5-5 5 5" />
-      <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
-    </svg>
-  ),
   lock: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <rect x="4" y="11" width="16" height="10" rx="2.5" />
@@ -45,12 +39,6 @@ export const Icon = {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
       <circle cx="12" cy="12" r="8" />
       <path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" />
-    </svg>
-  ),
-  file: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
-      <path d="M14 3v5h5" />
     </svg>
   ),
   close: (

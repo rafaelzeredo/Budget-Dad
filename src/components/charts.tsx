@@ -43,7 +43,7 @@ export function Waterfall({ steps, onPick }: { steps: WaterStep[]; onPick?: (key
   const hi = Math.max(0, d3max(rows, (r) => Math.max(r.start, r.end)) ?? 0);
   const x = scaleLinear().domain([lo, hi]).nice(4).range([labelW, Math.max(labelW + 40, w - valueW)]);
   const h = rows.length * rowH + 28;
-  const ticks = narrow ? [0, x.domain()[1]] : x.ticks(5);
+  const ticks = [...new Set(narrow ? [0, x.domain()[1]] : x.ticks(5))];
   return (
     <div className="chart" ref={ref} onMouseLeave={() => { setTip(null); setHover(null); }}>
       {w > 0 && (

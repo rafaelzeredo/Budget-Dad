@@ -1,119 +1,134 @@
 import type { BudgetModel, CategoryId, Txn } from '../lib/types';
 import { CAT } from '../lib/categories';
-import { applyFilters, buckets, byCategory, byDay, byWeek, installments, totals, type Filters } from '../lib/metrics';
-import { brl, dateBR, int, pct } from '../lib/format';
-import { BarRows, DailyColumns } from '../components/charts';
+import { applyFilters, byCategory, installments, totals, type Filters } from '../lib/metrics';
+import { brl, dateBR, pct } from '../lib/format';
+import { Donut } from '../components/viz';
 import { Info } from '../components/ui';
 
-export function Spending({ model, f, setF, openTxn, openDay }: { model: BudgetModel; f: Filters; setF: (f: Filters) => void; openTxn: (t: Txn) => void; openDay: (date: string) => void }) {
-  const ts = applyFilters(model, f).filter((t) => t.kind !== 'receita');
-  const T = totals(ts);
-  const cats = byCategory(ts, 'out');
-  const days = byDay(ts, f.from, f.to);
-  const weeks = byWeek(ts).filter((w) => w.from <= +f.to.slice(8) && w.to >= +f.from.slice(8));
-  const maxWeek = Math.max(...weeks.map((w) => w.out), 1);
-  const bks = buckets(ts);
-  const top = [...ts].sort((a, b) => b.amount - a.amount).slice(0, 6);
+/** Section 02: where the money went. */
+export function Spending({ model, f, toggleCat, setCats, openTxn }: { model: BudgetModel; f: Filters; toggleCat: (id: CategoryId) => void; setCats: (ids: CategoryId[]) => void; openTxn: (t: Txn) => void }) {
+  // The selectors (donut, list) ignore the group filter so the other groups stay visible as context.
+  const pool = applyFilters(model, { ...f, cats: [], flow: 'tudo' });
+  const outs = pool.filter((t) => t.kind !== 'receita');
+  const cats = byCategory(outs, 'out');
+  const T = totals(pool);
+  const sel = f.cats;
+  const chosen = sel.length ? outs.filter((t) => sel.includes(t.category)).sort((a, b) => b.amount - a.amount) : [];
+  const top = [...outs].filter((t) => !sel.length || sel.includes(t.category)).sort((a, b) => b.amount - a.amount).slice(0, 6);
   const inst = installments(model);
-  const toggleCat = (id: string) => {
-    const cid = id as CategoryId;
-    setF({ ...f, cats: f.cats.includes(cid) ? f.cats.filter((x) => x !== cid) : [...f.cats, cid] });
-  };
-  const daysWithOut = days.filter((d) => d.out > 0);
 
   return (
-    <div className="stack fade-in">
-      <div className="tiles">
-        <div className="tile"><div className="t-label">Total de saídas</div><div className="t-value num">{brl(T.out)}</div><div className="t-foot">{f.acertos ? 'despesas + acertos' : 'sem os acertos'}</div></div>
-        <div className="tile"><div className="t-label">Lançamentos</div><div className="t-value num">{int(ts.length)}</div><div className="t-foot">em {daysWithOut.length} dias diferentes</div></div>
-        <div className="tile"><div className="t-label">Gasto médio por lançamento<Info>Total de saídas dividido pelo número de lançamentos. Poucos valores grandes puxam a média para cima; por isso mostramos também a mediana.</Info></div><div className="t-value num">{ts.length ? brl(T.out / ts.length) : '—'}</div><div className="t-foot">mediana {ts.length ? brl(median(ts.map((t) => t.amount))) : '—'}</div></div>
-        <div className="tile"><div className="t-label">Média por dia<Info>Total de saídas dividido pelos dias do período escolhido ({days.length} dias).</Info></div><div className="t-value num">{days.length ? brl(T.out / days.length) : '—'}</div><div className="t-foot">{days.length} dias no período</div></div>
+    <div className="grid">
+      <div className="card span-12 dist">
+        <div className="dist-chart">
+          <Donut
+            slices={cats.map((r) => ({ key: r.id, label: CAT[r.id].short, value: r.amount, color: CAT[r.id].color }))}
+            selected={sel}
+            onToggle={(k) => toggleCat(k as CategoryId)}
+            centerTitle="Total que saiu"
+            centerSub={`${outs.length} lançamentos`}
+          />
+        </div>
+        <div className="dist-table">
+          <div className="card-head">
+            <h3>Por grupo</h3>
+            {sel.length > 0 && <button className="link-btn" onClick={() => setCats([])}>Mostrar todos</button>}
+          </div>
+          <p className="sub">Toque num grupo para ver os lançamentos dele e filtrar a página.</p>
+          <div className="ctable" role="table" aria-label="Saídas por grupo">
+            <div className="ct-row ct-head" role="row">
+              <span role="columnheader">Grupo</span>
+              <span role="columnheader" className="r">Valor</span>
+              <span role="columnheader" className="r">das saídas</span>
+              <span role="columnheader" className="r ct-inc">da renda <Info>Quanto este grupo representa do que entrou no período ({brl(T.income)}).</Info></span>
+            </div>
+            {cats.map((r) => {
+              const on = sel.includes(r.id);
+              return (
+                <button key={r.id} type="button" role="row" className={`ct-row ${on ? 'on' : ''} ${sel.length && !on ? 'dim' : ''}`} aria-pressed={on} onClick={() => toggleCat(r.id)}>
+                  <span className="ct-name" role="cell">
+                    <i style={{ background: CAT[r.id].color }} />
+                    <span>{CAT[r.id].label}<small>{r.count} {r.count === 1 ? 'lançamento' : 'lançamentos'}</small></span>
+                  </span>
+                  <span className="r num ct-val" role="cell">{brl(r.amount)}</span>
+                  <span className="r num" role="cell">
+                    <span className="ct-share"><span style={{ width: `${r.share * 100}%`, background: CAT[r.id].color }} /></span>
+                    {pct(r.share)}
+                  </span>
+                  <span className="r num ct-inc" role="cell">{T.income > 0 ? pct(r.amount / T.income) : '—'}</span>
+                </button>
+              );
+            })}
+          </div>
+          {!cats.length && <div className="empty">Sem saídas no filtro escolhido.</div>}
+        </div>
+        {chosen.length > 0 && (
+          <div className="chosen">
+            <div className="chosen-head">
+              <b>{sel.map((c) => CAT[c].short).join(' + ')}</b>
+              <span className="muted">{chosen.length} {chosen.length === 1 ? 'lançamento' : 'lançamentos'} · {brl(chosen.reduce((a, t) => a + Math.round(t.amount * 100), 0) / 100)}</span>
+            </div>
+            <div className="chosen-list">
+              {chosen.map((t) => (
+                <button key={t.id} type="button" className="chip-txn" onClick={() => openTxn(t)}>
+                  <i style={{ background: CAT[t.category].color }} />
+                  <span className="ctx-d">{t.description}</span>
+                  <span className="ctx-m">{dateBR(t.date)}</span>
+                  <b className="num">{brl(t.amount)}</b>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="grid">
-        <section className="card span-5">
-          <div className="card-head"><h2>Por grupo</h2></div>
-          <p className="sub">Clique para filtrar todos os gráficos por um ou mais grupos.</p>
-          <BarRows
-            ariaLabel="Saídas por grupo"
-            rows={cats.map((r) => ({ key: r.id, label: CAT[r.id].label, value: r.amount, color: CAT[r.id].color, sub: `${pct(r.share)} · ${r.count}×` }))}
-            selected={f.cats}
-            onToggle={toggleCat}
-          />
-          {!cats.length && <div className="empty">Sem saídas no filtro escolhido.</div>}
-        </section>
-        <section className="card span-7">
-          <div className="card-head"><h2>Dia a dia</h2></div>
-          <p className="sub">Quanto saiu em cada dia, por grupo. Clique num dia para ver os lançamentos.{f.acertos && T.acertos > 0 ? ' Desmarque “Incluir acertos” para ver melhor os dias comuns.' : ''}</p>
-          <DailyColumns days={days} selectedCats={f.cats} onPickDay={(d) => openDay(d.date)} />
-        </section>
-
-        <section className="card span-6">
-          <div className="card-head"><h2>Por semana do mês</h2></div>
-          <p className="sub">Saídas somadas por semana do calendário.</p>
-          <BarRows
-            ariaLabel="Saídas por semana do mês"
-            maxValue={maxWeek}
-            rows={weeks.map((w) => ({ key: w.label, label: `Dias ${w.label}`, value: w.out, color: 'var(--series-out)', sub: `${w.count} ${w.count === 1 ? 'lançamento' : 'lançamentos'}` }))}
-          />
-        </section>
-        <section className="card span-6">
-          <div className="card-head"><h2>Tamanho dos gastos <Info>Quantos lançamentos caem em cada faixa de valor. Ajuda a ver se o mês foi feito de muitas contas pequenas ou de poucas grandes.</Info></h2></div>
-          <p className="sub">Quantos lançamentos em cada faixa de valor, e quanto somam.</p>
-          <BarRows
-            ariaLabel="Lançamentos por faixa de valor"
-            maxValue={Math.max(...bks.map((b) => b.count), 1)}
-            rows={bks.map((b) => ({ key: b.label, label: b.label, value: b.count, color: 'var(--series-out)', right: `${b.count} ${b.count === 1 ? 'lançamento' : 'lançamentos'}`, sub: brl(b.amount) }))}
-          />
-        </section>
-
-        <section className="card span-6">
-          <div className="card-head"><h2>Maiores saídas</h2></div>
-          <p className="sub">Os lançamentos de maior valor no filtro escolhido.</p>
-          <ol className="toplist">
-            {top.map((t, i) => (
-              <li key={t.id}>
-                <button type="button" onClick={() => openTxn(t)}>
-                  <span className="rank">{i + 1}</span>
-                  <span className="dot" style={{ width: 10, height: 10, borderRadius: 3, background: CAT[t.category].color, flex: 'none' }} />
-                  <span className="what"><div>{t.description}</div><div>{dateBR(t.date)} · {CAT[t.category].label}</div></span>
-                  <span className="amt">{brl(t.amount)}</span>
-                </button>
-              </li>
-            ))}
-          </ol>
-          {!top.length && <div className="empty">Nada no filtro escolhido.</div>}
-        </section>
-        <section className="card span-6">
-          <div className="card-head"><h2>Parcelas em andamento <Info>Lançamentos cuja descrição traz o número da parcela, como “35/48”. O valor que falta é uma estimativa: supõe que as próximas parcelas tenham o mesmo valor desta.</Info></h2></div>
-          <p className="sub">Do mês inteiro. Barra = parcelas já pagas.</p>
-          <div className="inst">
-            {inst.map((i) => (
-              <div className="inst-row" key={i.txn.id}>
-                <div className="inst-top">
-                  <span><b style={{ fontWeight: 600 }}>{i.txn.description}</b> <span className="muted">· {brl(i.txn.amount)}/mês</span></span>
-                  <span className="r">{i.total ? `faltam ${i.left}` : `parcela nº ${i.n}`}</span>
-                </div>
-                {i.total ? (
-                  <div className="meter" role="meter" aria-valuemin={0} aria-valuemax={i.total} aria-valuenow={i.n} aria-label={`${i.n} de ${i.total} parcelas`}>
-                    <div style={{ width: `${(i.n / i.total) * 100}%`, background: CAT[i.txn.category].color }} />
-                  </div>
-                ) : null}
-                <div className="muted" style={{ fontSize: 13 }}>
-                  {i.total ? <>Parcela {i.n} de {i.total}{i.remainingIfSame ? <> · ainda faltariam cerca de <b className="sec">{brl(i.remainingIfSame)}</b></> : null}</> : 'O total de parcelas não aparece na planilha.'}
-                </div>
+      <div className="card span-6">
+        <div className="card-head"><h3>As maiores saídas</h3></div>
+        <p className="sub">Os lançamentos de maior valor{sel.length ? ' nos grupos escolhidos' : ''}. Toque para ver os detalhes.</p>
+        <ol className="toplist">
+          {top.map((t, i) => (
+            <li key={t.id}>
+              <button type="button" onClick={() => openTxn(t)}>
+                <span className="rank">{i + 1}</span>
+                <span className="what">
+                  <div>{t.description}</div>
+                  <div><span className="cat-cell"><i style={{ background: CAT[t.category].color }} />{CAT[t.category].short}</span> · {dateBR(t.date)}</div>
+                </span>
+                <span className="amt-wrap">
+                  <span className="amt num">{brl(t.amount)}</span>
+                  <span className="amt-bar"><span style={{ width: `${(t.amount / (top[0]?.amount || 1)) * 100}%`, background: CAT[t.category].color }} /></span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ol>
+        {!top.length && <div className="empty">Nada no filtro escolhido.</div>}
+      </div>
+      <div className="card span-6">
+        <div className="card-head"><h3>Parcelas em andamento <Info>Lançamentos cuja descrição traz o número da parcela, como “35/48”. O valor que falta é uma estimativa: supõe que as próximas parcelas tenham o mesmo valor desta.</Info></h3></div>
+        <p className="sub">Do mês inteiro. A barra mostra quanto do parcelamento já foi pago.</p>
+        <div className="inst">
+          {inst.map((i) => (
+            <button type="button" className="inst-row" key={i.txn.id} onClick={() => openTxn(i.txn)}>
+              <div className="inst-top">
+                <span><b>{i.txn.description.replace(/\s*\d+\/\d+\s*$/, '')}</b> <span className="muted">· {brl(i.txn.amount)}/mês</span></span>
+                <span className="r">{i.total ? `${i.n} de ${i.total}` : `parcela nº ${i.n}`}</span>
               </div>
-            ))}
-            {!inst.length && <div className="empty">Nenhuma parcela identificada.</div>}
-          </div>
-        </section>
+              {i.total ? (
+                <div className="meter" role="meter" aria-valuemin={0} aria-valuemax={i.total} aria-valuenow={i.n} aria-label={`${i.n} de ${i.total} parcelas`}>
+                  <div style={{ width: `${(i.n / i.total) * 100}%`, background: CAT[i.txn.category].color }} />
+                </div>
+              ) : (
+                <div className="meter unknown" aria-hidden="true"><div /></div>
+              )}
+              <div className="muted inst-foot">
+                {i.total ? <>faltam {i.left} · cerca de <b className="sec">{brl(i.remainingIfSame ?? 0)}</b> se o valor se mantiver</> : 'O total de parcelas não aparece na planilha.'}
+              </div>
+            </button>
+          ))}
+          {!inst.length && <div className="empty">Nenhuma parcela identificada.</div>}
+        </div>
       </div>
     </div>
   );
-}
-
-function median(xs: number[]) {
-  const s = [...xs].sort((a, b) => a - b);
-  const m = Math.floor(s.length / 2);
-  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 }

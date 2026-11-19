@@ -21,6 +21,30 @@ export function monthRange(m: BudgetModel): { min: string; max: string } {
   return { min, max };
 }
 
+/** The template splits the month in two parts: the second starts when the second income arrives. */
+export function splitDate(m: BudgetModel): { split: string | null; dayBefore: string | null } {
+  const split = m.transactions.find((t) => t.block === 'fim' && t.kind === 'receita')?.date ?? null;
+  return { split, dayBefore: split ? addDays(split, -1) : null };
+}
+
+/** Every day of the calendar month the lines belong to (1st to last day). */
+export function monthDays(m: BudgetModel): { first: string; last: string } {
+  const { min } = monthRange(m);
+  const first = min.slice(0, 8) + '01';
+  const d = new Date(Date.UTC(+min.slice(0, 4), +min.slice(5, 7), 0));
+  return { first, last: d.toISOString().slice(0, 10) };
+}
+
+/** Exact duplicates: same date, amount and description in different cells. */
+export function duplicates(m: BudgetModel): Txn[][] {
+  const g = new Map<string, Txn[]>();
+  m.transactions.filter((t) => t.amount > 0).forEach((t) => {
+    const k = `${t.date}|${c(t.amount)}|${t.description.toLowerCase()}`;
+    g.set(k, [...(g.get(k) ?? []), t]);
+  });
+  return [...g.values()].filter((xs) => xs.length > 1);
+}
+
 export function defaultFilters(m: BudgetModel): Filters {
   const { min, max } = monthRange(m);
   return { from: min, to: max, cats: [], flow: 'tudo', acertos: true };

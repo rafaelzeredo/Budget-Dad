@@ -1,54 +1,49 @@
 # Budget Dad
 
-**Painel do orçamento do mês: claro, bonito e privado.**
-*A clear, private dashboard for a family's monthly budget spreadsheet.*
+**O orçamento do mês, num painel bonito, claro e particular.**
+*A private, interactive dashboard of one family's monthly budget spreadsheet.*
 
-Budget Dad opens the family's monthly budget spreadsheet (`.ods`, made in OpenOffice/LibreOffice) and turns it into an interactive dashboard in Brazilian Portuguese: what came in, where the money went, day by day, the instalments still to pay, investments, assets and net worth.
-
-> **Privacy by design.** This repository and the published website contain **no financial data**. The spreadsheet is opened by the person using the site and is read **inside their own browser**. Nothing is uploaded and no server sees it. A strict Content-Security-Policy blocks the page from contacting any other site.
-
----
+Budget Dad turns the family's monthly budget spreadsheet (`PAI/ModeloRafael.ods`, made in OpenOffice) into a finished financial dashboard in Brazilian Portuguese. It opens straight into the real numbers: no uploads, no setup.
 
 ## What it shows
 
-| Section | What you get |
-|---|---|
-| **Visão geral** | Month result (income − everything that went out), the statement from the previous balance to what is left for next month, a waterfall of how the month closed, cumulative income vs. spending day by day, and the top observations. |
-| **Gastos** | Spending by group (click to filter everything), a day-by-day stacked chart, spending by week, the size of each spending entry, the largest entries, and instalments in progress with how many are left. |
-| **Lançamentos** | Every line of the month: accent-insensitive search, filters, sort by date, amount or description, and a detail panel with the spreadsheet's own note and the source cell. Shown as a table on desktop and as cards on mobile. |
-| **Patrimônio** | Net worth with its composition, every investment (current value, amount invested, change), balances by institution, a maturity timeline, assets (price paid vs. value today) and loans. |
-| **Descobertas** | Observations generated from the real numbers, each labelled **Fato calculado** (fact), **Estimativa** (estimate with its assumption stated) or **Leitura** (interpretation). |
-| **Sobre os dados** | Where every number comes from: a cell-by-cell check against the spreadsheet's own totals, data-quality warnings, lines with no value, the grouping rules and a glossary. |
+One page, in seven sections, all connected by the same filters (period, a single day, income/spending, include “acertos”, spending groups):
 
-Filters (period, income/expenses, include “acertos”, groups) apply consistently to *Visão geral*, *Gastos* and *Lançamentos*.
+| | Section | What you get |
+|---|---|---|
+| — | **Resumo** | Month result with a running day-by-day result line, income, expenses, “acertos”, share of income left, what is left for next month and net worth. |
+| 01 | **Entradas e saídas** | Income vs. spending on one scale (with the gap covered by savings), a waterfall of how the month closed, cumulative income vs. spending. |
+| 02 | **Para onde foi o dinheiro** | Interactive donut + table by group (share of spending and of income). Selecting a group lists its entries and filters the whole page. Largest entries and instalments in progress. |
+| 03 | **O mês, dia a dia** | Daily spending stacked by group, a month calendar heatmap (click a day to filter), weekly totals and the size distribution of spending. |
+| 04 | **Todos os lançamentos** | Every line as a day-by-day feed: accent-insensitive search, sorting, detail drawer with the sheet's own note and source cell. |
+| 05 | **O que os números contam** | Observations computed from the data, each labelled *fato*, *estimativa* or *leitura*. Click one to jump to its entries. |
+| 06 | **Patrimônio** | Net worth composition, investments, balances by institution, maturity timeline, assets (paid vs. today) and loans. |
+| 07 | **Sobre os dados** | Source file and fingerprint, a cent-by-cent check against the sheet's own totals, data-quality notes, grouping rules, glossary. |
 
-## How it works
+## How the data gets in
 
-1. **Read** (`src/lib/ods.ts`): unzips the `.ods` file with `fflate` and parses `content.xml`: values, dates, formulas, cell comments and highlight colours.
-2. **Interpret** (`src/lib/template.ts`): the spreadsheet's **own formulas** decide what is income, expense and “acertos”. For example, the expense lines are exactly the cells summed by the “Despesa” formula. The investments, assets, loans and net-worth blocks are found by their labels. Every total is then **re-computed and compared with the sheet's own result, cent by cent**.
-3. **Group** (`src/lib/categories.ts`): simple, visible keyword rules, plus the sheet's own category summary where a line has no description. The rules are listed in the app.
-4. **Calculate** (`src/lib/metrics.ts`, `src/lib/insights.ts`): totals in integer cents (no floating-point drift), filters, daily, weekly and category aggregates, instalments and observations.
-5. **Show** (`src/sections/*`, `src/components/charts.tsx`): hand-built SVG charts (d3-scale/d3-shape) with tooltips, a validated colour-blind-safe palette, light and dark themes, and a responsive layout.
+```
+PAI/ModeloRafael.ods ──(npm run data)──▶ local-data/budget.json   (plain, git-ignored, used by `npm run dev`)
+      read-only                       └─▶ public/data/budget.bin  (AES-256-GCM encrypted, published)
+```
 
-Long identification numbers found in descriptions or notes (customer numbers, registrations) are masked (`•••318`).
+`scripts/build-data.ts` reads the spreadsheet (never modifies it) with the same parser the tests use (`src/lib/ods.ts`, `src/lib/template.ts`):
+the sheet's **own formulas** decide what is income, expense and “acertos”, and every total is re-computed in integer cents and compared with the sheet's result.
 
-## Tech
+## Privacy
 
-React 18 · TypeScript · Vite · d3-scale/d3-shape · fflate · Vitest. No backend. Deployed to GitHub Pages by GitHub Actions.
+This repository is public; the family's numbers are not. The published data file is **encrypted**. The key exists only in `local-data/` (git-ignored) and in the family's **private link** (`…/Budget-Dad/#k=…`). The part after `#` is never sent to any server. The first visit with the link remembers access on that device; “Esquecer o acesso neste aparelho” (footer) removes it. Without the key the site shows only a “Painel particular” page. A strict Content-Security-Policy blocks requests to other sites. Long ID numbers in descriptions and notes are masked (`•••318`).
 
-## Run locally
+## Develop
 
 ```bash
 npm install
-npm run dev        # http://127.0.0.1:5178
-npm test           # unit tests (+ real-sheet tests if a local copy exists)
+npm run data       # process ../Pai/ModeloRafael.ods → local-data/ + public/data/budget.bin
+npm run dev        # http://127.0.0.1:5178 (opens with the local plain copy)
+npm test           # unit tests; real-sheet and decryption tests run only where local-data/ exists
 npm run build      # production build in dist/
 ```
 
-For development you can put a copy of the spreadsheet in `local-data/ModeloRafael.ods`. The dev server then opens it automatically. `local-data/` and every `.ods/.xlsx/.csv/.pdf` file are git-ignored and never part of the build.
+After `npm run data`, the private link is in `local-data/private-link.txt`.
 
-## Using it
-
-Open the site and choose the spreadsheet file (or drag it onto the page). Optionally tick **“Lembrar a planilha neste aparelho”** to keep the parsed data in this browser only (`localStorage`). **Fechar** forgets it.
-
-The reader expects the family template's layout: date/value/description columns for the two halves of the month, summary rows “Receita / Despesa / Saldo”, a block titled “Acertos”, and the investments, assets and loans blocks. If the layout changes a lot, the app explains what it could not find.
+React 18 · TypeScript · Vite · d3-scale/d3-shape · Inter & Fraunces (self-hosted) · Vitest. Deployed to GitHub Pages by GitHub Actions.

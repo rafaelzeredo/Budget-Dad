@@ -1,4 +1,4 @@
-import type { BudgetModel } from '../lib/types';
+import type { BudgetModel, CategoryId } from '../lib/types';
 import { buildInsights, type Insight } from '../lib/insights';
 import { CAT } from '../lib/categories';
 
@@ -8,46 +8,31 @@ const KIND = {
   leitura: { label: 'Leitura', hint: 'Interpretação dos números; vale confirmar.' },
 };
 
-export function InsightCard({ i }: { i: Insight }) {
+export function InsightCard({ i, onPick }: { i: Insight; onPick?: (c: CategoryId) => void }) {
+  const clickable = !!(i.category && onPick && CAT[i.category].kind !== 'receita');
+  const Tag = clickable ? 'button' : 'article';
   return (
-    <article className="card ins">
+    <Tag type={clickable ? 'button' : undefined} className={`ins ${clickable ? 'clickable' : ''}`} onClick={clickable ? () => onPick!(i.category!) : undefined} style={i.category ? { ['--c' as string]: CAT[i.category].color } : undefined}>
       <span className={`k ${i.kind}`} title={KIND[i.kind].hint}>{KIND[i.kind].label}</span>
-      <h3>
-        {i.category && <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: CAT[i.category].color, marginRight: 8 }} />}
-        {i.title}
-      </h3>
+      <h4>{i.title}</h4>
       {i.figure && <div className="fig num">{i.figure}</div>}
       <p>{i.body}</p>
-    </article>
+      {clickable && <span className="ins-go">Ver os lançamentos de {CAT[i.category!].short} →</span>}
+    </Tag>
   );
 }
 
-export function Insights({ model, today }: { model: BudgetModel; today: string }) {
-  const all = buildInsights(model, today);
-  const groups: { id: Insight['area']; title: string }[] = [
-    { id: 'mes', title: 'O mês' },
-    { id: 'gastos', title: 'Os gastos' },
-    { id: 'patrimonio', title: 'O patrimônio' },
-  ];
+/** Section 05: observations computed from the real numbers. */
+export function Insights({ model, today, onPick, area }: { model: BudgetModel; today: string; onPick: (c: CategoryId) => void; area: Insight['area'][] }) {
+  const all = buildInsights(model, today).filter((i) => area.includes(i.area));
   return (
-    <div className="fade-in">
+    <>
       <div className="ins-legend">
         {(Object.keys(KIND) as (keyof typeof KIND)[]).map((k) => (
-          <span key={k} className="ins" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <span className={`k ${k}`}>{KIND[k].label}</span> {KIND[k].hint}
-          </span>
+          <span key={k}><span className={`k ${k}`}>{KIND[k].label}</span> {KIND[k].hint}</span>
         ))}
       </div>
-      {groups.map((g) => {
-        const xs = all.filter((i) => i.area === g.id);
-        if (!xs.length) return null;
-        return (
-          <section key={g.id}>
-            <h2 className="section-title">{g.title}</h2>
-            <div className="ins-grid">{xs.map((i) => <InsightCard key={i.id} i={i} />)}</div>
-          </section>
-        );
-      })}
-    </div>
+      <div className="ins-grid">{all.map((i) => <InsightCard key={i.id} i={i} onPick={onPick} />)}</div>
+    </>
   );
 }

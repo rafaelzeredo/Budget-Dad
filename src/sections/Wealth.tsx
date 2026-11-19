@@ -39,11 +39,10 @@ export function Wealth({ model, today }: { model: BudgetModel; today: string }) 
           <div className="kv" style={{ borderTop: '1px solid var(--axis)' }}><span style={{ fontWeight: 650 }}>= Patrimônio líquido</span><span className="v">{brl(W.net)}</span></div>
         </div>
       </div>
-      <p className="muted" style={{ margin: '-6px 4px 0', fontSize: 13.5 }}>Esta página mostra a posição registrada na planilha ({asOf}) e não muda com os filtros do mês.</p>
 
       <div className="grid">
         <section className="card span-7">
-          <div className="card-head"><h2>Aplicações <Info>Valor atual de cada aplicação, como está na planilha. Embaixo de cada valor: quanto foi aplicado e a variação entre os dois.</Info></h2></div>
+          <div className="card-head"><h3>Aplicações <Info>Valor atual de cada aplicação, como está na planilha. Embaixo de cada valor: quanto foi aplicado e a variação entre os dois.</Info></h3></div>
           <p className="sub">Valor atual de cada aplicação, do maior para o menor.</p>
           <BarRows
             ariaLabel="Valor atual de cada aplicação"
@@ -68,7 +67,7 @@ export function Wealth({ model, today }: { model: BudgetModel; today: string }) 
           )}
         </section>
         <section className="card span-5">
-          <div className="card-head"><h2>Saldos por instituição <Info>Quadro “Saldo 29” da planilha: quanto há em cada banco ou aplicação no fim do mês. A soma bate com o saldo que resta para o próximo mês.</Info></h2></div>
+          <div className="card-head"><h3>Saldos por instituição <Info>Quadro “Saldo 29” da planilha: quanto há em cada banco ou aplicação no fim do mês. A soma bate com o saldo que resta para o próximo mês.</Info></h3></div>
           <p className="sub">Soma: {brl(model.balancesTotal ?? 0)}</p>
           <BarRows
             ariaLabel="Saldo por instituição"
@@ -77,7 +76,7 @@ export function Wealth({ model, today }: { model: BudgetModel; today: string }) 
         </section>
 
         <section className="card span-12">
-          <div className="card-head"><h2>Vencimentos das aplicações</h2></div>
+          <div className="card-head"><h3>Vencimentos das aplicações</h3></div>
           <p className="sub">Quando cada aplicação com saldo vence. O tamanho do círculo acompanha o valor atual.</p>
           <MaturityTimeline today={today} items={upcoming.map((i) => ({ name: i.name, date: i.maturity!, value: i.current }))} />
           <div className="table-wrap" style={{ marginTop: 10 }}>
@@ -104,12 +103,12 @@ export function Wealth({ model, today }: { model: BudgetModel; today: string }) 
         </section>
 
         <section className="card span-7">
-          <div className="card-head"><h2>Bens: quanto custaram e quanto valem</h2></div>
+          <div className="card-head"><h3>Bens: quanto custaram e quanto valem</h3></div>
           <p className="sub">Valores informados na planilha. O círculo vazio é o valor pago; o cheio, o valor atual.</p>
           <Dumbbell rows={[...model.assets].sort((a, b) => b.value - a.value).map((a) => ({ name: a.name, a: a.cost, b: a.value, aLabel: 'Valor pago', bLabel: 'Valor atual' }))} />
         </section>
         <section className="card span-5">
-          <div className="card-head"><h2>Empréstimos</h2></div>
+          <div className="card-head"><h3>Empréstimos</h3></div>
           <p className="sub">Saldo devedor de cada empréstimo, como está na planilha.</p>
           {model.loans.map((l) => (
             <div className="kv" key={l.name}>

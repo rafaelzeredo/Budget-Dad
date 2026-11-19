@@ -70,6 +70,29 @@ export function buildInsights(m: BudgetModel, today = new Date().toISOString().s
     });
   }
 
+  if (cats[0] && T.income > 0) {
+    const top = cats[0];
+    const share = top.amount / T.income;
+    out.push({
+      id: 'renda', kind: 'fato', area: 'gastos', category: top.id,
+      title: `${CAT[top.id].short} levaram ${pct(share)} da renda`,
+      figure: pct(share),
+      body: `De cada R$ 100 que entraram, cerca de R$ ${Math.round(share * 100)} foram para ${CAT[top.id].label.toLowerCase()}. Todas as despesas juntas somam ${pct(T.expenses / T.income)} da renda; com os acertos, ${pct(T.out / T.income)}.`,
+    });
+  }
+
+  const rec = real.filter((t) => t.kind === 'despesa' && (t.installment || t.category === 'casa'));
+  if (rec.length >= 2) {
+    const casa = total(rec.filter((t) => t.category === 'casa' && !t.installment));
+    const parc = total(rec.filter((t) => t.installment));
+    out.push({
+      id: 'recorrentes', kind: 'leitura', area: 'gastos',
+      title: 'Gastos com cara de todo mês',
+      figure: brl(total(rec)),
+      body: `${rec.length} lançamentos parecem se repetir mês a mês: contas da casa (luz, água, gás, internet, condomínio: ${brl(casa)}) e parcelas (${brl(parc)}). Juntos, são ${T.income > 0 ? pct(total(rec) / T.income) : '—'} da renda. A planilha traz um mês só, então isto é uma leitura pelas descrições, não um histórico.`,
+    });
+  }
+
   const biggest = [...real.filter((t) => t.kind === 'despesa')].sort((a, b) => b.amount - a.amount)[0];
   if (biggest)
     out.push({
